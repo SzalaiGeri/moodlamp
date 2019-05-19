@@ -2,6 +2,7 @@
 #define LED_PIN         7
 #define NUM_LEDS        12
 #define PROGCHANGE_BTN  2
+#define POWER_SWITCH    3
 
 CRGB leds[NUM_LEDS];
 int progNum = 0;
@@ -23,9 +24,9 @@ int colors[7][3] = {
 // ---------------------- INITIALISATION ----------------------
 
 void setup() {
-  Serial.begin(9600);
   randomSeed(analogRead(0));
   pinMode(PROGCHANGE_BTN, INPUT);
+  pinMode(POWER_SWITCH, INPUT);
   FastLED.addLeds<WS2811, LED_PIN, GRB>(leds, NUM_LEDS);
   clearLEDs();
 }
@@ -36,13 +37,22 @@ void setup() {
 
 void loop() {
   int btnState = digitalRead(PROGCHANGE_BTN);
+  int turnedOn = digitalRead(POWER_SWITCH);
   boolean justChangedMode = false;
 
+  if (turnedOn == 0){
+    clearLEDs();
+    FastLED.show();
+    return;
+  }
+
+  
   // Button is pressed
   if (lastBtnState == 0 && btnState == 1) {
     justChangedMode = true;
+    
     clearLEDs();
-    progNum = (progNum + 1) % 7;
+    progNum = (progNum + 1) % 11;
   }
   lastBtnState = btnState;
 
@@ -50,8 +60,7 @@ void loop() {
   // Animation programs
   switch (progNum) {
     case (0):
-      colorWheelAnim();
-//      setColorToAll(colors[progNum]);
+      setColorToAll(colors[progNum]);
       break;
     case (1):
       setColorToAll(colors[progNum]);
@@ -74,15 +83,23 @@ void loop() {
     case (7):
       colorWheel();
       break;
-
+    case (8):
+      colorWheelAnim();
+      break;
+    case (9):
+      randomColors();
+      break;
+    case (10):
+      runningColor();
+      break;
   }
-
 }
 
 
 
 // ---------------------- CUSTOM ANIMATIONS ----------------------
 
+// All LEDs go through the color wheel defined
 void colorWheel() {
   CRGB nextColor = nextColorOnWheel(leds[0], 1);
   
@@ -90,6 +107,7 @@ void colorWheel() {
   delay(25);
 }
 
+// LEDs go through wheel, but in a snake like fashion
 void colorWheelAnim() {
   CRGB nextColor = nextColorOnWheel(leds[0], 50);
 
@@ -104,13 +122,66 @@ void colorWheelAnim() {
 }
 
 
-//
-//void randomColors() {
-//  for (int i = 0; i < NUM_LEDS; i++) {
-//    leds[i] = CRGB(r, g, b);
-//  }
-//  FastLED.show();
-//}
+// Random color on every 3 LEDs
+int randomColorHold = 0;
+void randomColors() {
+  int r, g, b;
+
+  if (randomColorHold == 0) {
+    randomColorHold = 10000;  // Hold this color for 10 secs
+    r = random(255);
+    g = random(255);
+    b = random(255);
+    for (int i = 0; i < 3; i++) {
+      leds[i] = CRGB(r, g, b);
+    }
+    r = random(255);
+    g = random(255);
+    b = random(255);
+    for (int i = 3; i < 6; i++) {
+      leds[i] = CRGB(r, g, b);
+    }
+    r = random(255);
+    g = random(255);
+    b = random(255);
+    for (int i = 6; i < 9; i++) {
+      leds[i] = CRGB(r, g, b);
+    }
+    r = random(255);
+    g = random(255);
+    b = random(255);
+    for (int i = 9; i < 12; i++) {
+      leds[i] = CRGB(r, g, b);
+    }
+    FastLED.show();
+  }
+  
+  delay(50);
+  randomColorHold -= 50;
+  if (randomColorHold < 0){
+    randomColorHold = 0;
+  }
+}
+
+// Single color runs through every LED
+int runningActLED = 0;
+CRGB runningActColor;
+void runningColor(){
+    if (runningActLED == 0) {
+      runningActColor = CRGB(random(255), random(255), random(255));
+    }
+
+    clearLEDs();
+    leds[runningActLED] = runningActColor;
+    
+    runningActLED ++;
+    if (runningActLED >= NUM_LEDS) {
+      runningActLED = 0;
+    }
+    
+    FastLED.show();
+    delay(100);
+}
 
 
 
